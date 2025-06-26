@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Scatterplot</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90%;
+      max-width: 800px;
+      margin: 0 auto;
+      line-height: 1.6;
+      padding: 2rem 0;
+    }
+    
+    h1 {
+      font-size: 2rem;
+      margin: 2rem 0 1rem 0;
+      color: #333;
+    }
+    
+    p {
+      font-size: 1.1rem;
+      color: #555;
+      text-align: justify;
+      margin: 1.2rem 0;
+    }
+    
+    #chart {
+      width: 100%;
+      max-width: 1200px;
+      height: 800px;
+      margin: 2rem 0;
+    }
+    #controls {
+      display: flex;
+      gap: 2rem;
+      margin: 1rem 0;
+      align-items: center;
+    }
+    select {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-family: inherit;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    label {
+      font-weight: bold;
+      color: #333;
+    }
+    
+    #info {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: #666;
+    }
+    
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+      
+      h1 {
+        font-size: 1.5rem;
+      }
+      
+      p {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1 style="font-size: 3rem; font-weight: bold; margin: 3rem 0 2rem 0; text-align: center;">AI Toxicity Classifier Bias Analysis</h1>
+  <img src="ai.jpg" alt="Data visualization chart" style="width: 100%; max-width: 600px; height: auto; margin: 1rem 0; border-radius: 8px;">
+  <h1>Introduction</h1>
+  <p>Artificial intelligence tools, particularly natural language processing (NLP) models, are increasingly being adopted in decision-making processes across hiring, moderation, and customer engagement. However, these tools often inherit and amplify the social biases present in their training data. This website aims to visually expose the ways in which AI toxicity classifiers may demonstrate unintended bias (especially toward certain marginalized identities) when given inputs that include information from senders such as gender identity, race, religion, or disability status.</p>
+
+  <h1>Methodology</h1>
+  <p>The analysis presented on this website is based on the Jigsaw Unintended Bias in Toxicity Classification dataset, which contains online comments annotated with toxicity scores and identity attributes such as race, gender, religion, and disability. To evaluate potential bias, we used the garak-llm/roberta_toxicity_classifier model, a RoBERTa-based transformer trained to classify toxic language.</p>
+  <p>To test for identity-based bias, we applied prompt engineering: each sentence was prepended with a synthetic identity statement with delimiters (e.g., "||| race_or_ethnicity: white ||| gender: female ||| …") to simulate how identity disclosure may affect toxicity classification. The toxicity output was recorded across multiple identity categories, and an interactive graph allows users to explore how toxicity scores vary across different groups.</p>
+  <p>This structured, research-informed format allows decision-makers to directly observe bias patterns, helping them assess the risks of uncritical AI use and consider more equitable alternatives in real-world applications.</p>
+
+  <h1>Variable vs. Toxicity Score</h1>
+  <p>Select a variable to explore its relationship with toxicity score</p>
+  
+  <div id="controls">
+    <div class="control-group">
+      <label for="yVariable">Y-Axis Variable:</label>
+      <select id="yVariable">
+        <option value="">Select Y Variable</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="chart"></div>
+  
+  <div id="info">
+    <p id="dataCount">No data loaded</p>
+  </div>
+
+  <script>
+    let dataset = [];
+    let numericColumns = [];
+    let categoricalColumns = [];
+    async function loadData() {
+      try {
+        const response = await fetch('merged_with_scores.json');
+        dataset = await response.json();
+        
+        if (dataset.length > 0) {
+          analyzeColumns();
+          populateDropdowns();
+          updateDataCount();
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    }
+
+    function analyzeColumns() {
+      if (dataset.length === 0) return;
+      
+      const sampleRow = dataset[0];
+      numericColumns = [];
+      categoricalColumns = [];
+      
+      Object.keys(sampleRow).forEach(key => {
+        const values = dataset.slice(0, 100).map(row => row[key]).filter(v => v != null);
+        
+        if (values.length === 0) return;
+        const numericValues = values.filter(v => !isNaN(parseFloat(v)) && isFinite(v));
+        if (numericValues.length > values.length * 0.8) {
+          numericColumns.push(key);
+        } else {
+          categoricalColumns.push(key);
+        }
+      });
+    }
+
+    function populateDropdowns() {
+      const ySelect = document.getElementById('yVariable');
+      ySelect.innerHTML = '<option value="">Select Y Variable</option>';
+      [...numericColumns, ...categoricalColumns]
+        .filter(col => col !== 'toxicity_score' && col !== 'id' && col !== 'worker' && col !== 'message')
+        .forEach(col => {
+          const option = document.createElement('option');
+          option.value = col;
+          option.textContent = col;
+          ySelect.appendChild(option);
+        });
+    }
+
+    function createScatterplot() {
+      const xVariable = 'toxicity_score';
+      const yVariable = document.getElementById('yVariable').value;
+      
+      if (!yVariable) {
+        document.getElementById('chart').innerHTML = '<p style="text-align: center; margin-top: 200px;">Please select a Y variable</p>';
+        return;
+      }
+
+      if (!dataset[0] || !dataset[0].hasOwnProperty(xVariable)) {
+        document.getElementById('chart').innerHTML = '<p style="text-align: center; margin-top: 200px;">Toxicity score not found in dataset</p>';
+        return;
+      }
+      
+      const xValues = dataset.map(row => parseFloat(row[xVariable])).filter(v => !isNaN(v));
+      const yValues = dataset.map(row => {
+        const val = row[yVariable];
+        return isNaN(parseFloat(val)) ? val : parseFloat(val);
+      }).filter(v => v != null);
+      
+      const minLength = Math.min(xValues.length, yValues.length);
+      const x = xValues.slice(0, minLength);
+      const y = yValues.slice(0, minLength);
+      
+      const trace = {
+        x: x,
+        y: y,
+        mode: 'markers',
+        type: 'scatter',
+        marker: {
+          size: 6,
+          color: 'rgba(55, 128, 191, 0.6)',
+          line: {
+            width: 1,
+            color: 'rgba(55, 128, 191, 1.0)'
+          }
+        },
+        name: 'Data Points'
+      };
+      
+      const layout = {
+        title: `${yVariable} vs Toxicity Score`,
+        xaxis: { 
+          title: 'Toxicity Score',
+          autorange: true
+        },
+        yaxis: { 
+          title: '',
+          autorange: true,
+          tickangle: -45
+        },
+        hovermode: 'closest',
+        margin: {
+          l: 120,
+          r: 50,
+          b: 120,
+          t: 80
+        }
+      };
+      
+      Plotly.newPlot('chart', [trace], layout);
+      updateDataCount();
+    }
+
+
+    function updateDataCount() {
+      document.getElementById('dataCount').textContent = 
+        `Showing ${dataset.length} data points`;
+    }
+
+    document.getElementById('yVariable').addEventListener('change', createScatterplot);
+
+    // Initialize
+    loadData();
+  </script>
+</body>
+</html>
