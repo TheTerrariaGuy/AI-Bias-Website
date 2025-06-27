@@ -19,15 +19,19 @@
     
     h1 {
       font-size: 2rem;
-      margin: 2rem 0 1rem 0;
+      margin: 2rem 0 2rem 0;
       color: #333;
     }
-    
+    h3 {
+      padding: 0;
+      margin: 2rem 0 0 0;
+      color: #333;
+    }
     p {
       font-size: 1.1rem;
       color: #555;
       text-align: justify;
-      margin: 1.2rem 0;
+      margin: 0.2rem 0 1.2rem 0;
     }
     
     #chart {
@@ -87,7 +91,7 @@
   <p>Artificial intelligence tools, particularly natural language processing (NLP) models, are increasingly being adopted in decision-making processes across hiring, moderation, and customer engagement. However, these tools often inherit and amplify the social biases present in their training data. This website aims to visually expose the ways in which AI toxicity classifiers may demonstrate unintended bias (especially toward certain marginalized identities) when given inputs that include information from senders such as gender identity, race, religion, or disability status.</p>
 
   <h1>Methodology</h1>
-  <p>The analysis presented on this website is based on the Jigsaw Unintended Bias in Toxicity Classification dataset, which contains online comments annotated with toxicity scores and identity attributes such as race, gender, religion, and disability. To evaluate potential bias, we used the garak-llm/roberta_toxicity_classifier model, a RoBERTa-based transformer trained to classify toxic language.</p>
+  <p>The analysis presented on this website is based on the <a href="https://www.kaggle.com/competitions/jigsaw-unintended-bias-in-toxicity-classification/overview" target="_blank">Jigsaw Unintended Bias</a> dataset, which contains online comments annotated with toxicity scores and identity attributes such as race, gender, religion, and disability. To evaluate potential bias, we used the <a href="https://huggingface.co/s-nlp/roberta_toxicity_classifier" target="_blank">garak-llm/roberta_toxicity_classifier</a> model, a RoBERTa-based transformer trained to classify toxic language.</p>
   <p>To test for identity-based bias, we applied prompt engineering: each sentence was prepended with a synthetic identity statement with delimiters (e.g., "||| race_or_ethnicity: white ||| gender: female ||| …") to simulate how identity disclosure may affect toxicity classification. The toxicity output was recorded across multiple identity categories, and an interactive graph allows users to explore how toxicity scores vary across different groups.</p>
   <p>This structured, research-informed format allows decision-makers to directly observe bias patterns, helping them assess the risks of uncritical AI use and consider more equitable alternatives in real-world applications.</p>
 
@@ -109,6 +113,35 @@
     <p id="dataCount">No data loaded</p>
   </div>
 
+  <h1>Analysis</h1>
+
+  <h3>Disability</h3>
+  <p>
+    Although data on disability was limited (only about 2% of entries indicated a disability other than “none”), the results still revealed notable trends. More specifically, comments associated with physical disabilities showed a highly right-skewed toxicity distribution, while those linked to intellectual or learning disabilities had some high-toxicity outliers. This suggests a potential bias in the model, with comments from physically disabled individuals more likely to be rated as toxic.
+  </p>
+
+  <h3>Gender</h3>
+  <p>
+    This category revealed a pronounced pattern: comments associated with transgender individuals showed a concentration of high toxicity scores. This suggests a significant bias in the model against transgender users.
+  </p>
+
+  <h3>Race or Ethnicity</h3>
+  <p>
+    As with gender, clear disparities emerged. Comments from individuals identified as Latino or Asian received disproportionately high toxicity scores, again indicating bias in the model’s judgments.
+  </p>
+
+  <h3>Religion</h3>
+  <p>
+    Some groups—particularly Jewish and Christian—had notable outliers in toxicity scores. While less pronounced than in other categories, these deviations suggest uneven AI biases between religious identities.
+  </p>
+
+  <h3>Sexual Orientation</h3>
+  <p>
+    There were no clear or consistent patterns observed in this category. However, the data was highly imbalanced, with roughly 95% of entries marked as “none,” making meaningful analysis difficult.
+  </p>
+  <h1>Notes on Lingo</h1>
+  <p>Natural Language Processing (NLP) is a branch of artificial intelligence that helps computers understand and work with human language. An NLP model is a computer program trained to recognize patterns in text—like the way certain words are used together or how sentences are structured. These models are often used in tools like chatbots, translation apps, or content filters. The model we are using is a Transformer based model, which is the same technique the Large Language Models like ChatGPT use.</p>
+  <p>In this project, we use an NLP model trained to detect toxic language—comments that might be rude, hateful, or offensive. When you give the model give, it returns a toxicity score, which is just a number showing how likely the sentence is to be considered toxic. A lower score means the model thinks the sentence is more harmful (think: -1 = toxic, 1 = non toxic). But it's important to remember that these scores aren’t perfect: they reflect what the model has learned from past data, which may include human biases. That means certain words or identity labels might unfairly increase a toxicity score, even when the sentence itself is not offensive.</p>
   <script>
     let dataset = [];
     let numericColumns = [];
